@@ -1,6 +1,7 @@
 name: LOL Message Push
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '30 23 * * *'
 
