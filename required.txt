@@ -1,2 +1,3 @@
 requests
 pytz
+serverchan_sdk

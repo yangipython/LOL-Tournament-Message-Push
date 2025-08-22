@@ -4,13 +4,13 @@ from datetime import datetime
 import pytz
 from collections import defaultdict
 import os
+from serverchan_sdk import sc_send
 
 # 常量定义
 TARGET_LEAGUES = {'LPL', 'LCK'}
 CHINA_TZ = pytz.timezone("Asia/Shanghai")
 GRAPHQL_URL = 'https://esports.op.gg/matches/graphql/__query__ListUpcomingMatchesBySerie'
-Token = os.environ['MY_TOKEN']  # wxpusher应用的app token
-UID = os.environ['UID']  # wxpusher应用 推送用户的UID
+SendKey = os.environ['SEND_KEY']
 
 
 def utc_to_china(utc_str: str) -> datetime:
@@ -88,33 +88,37 @@ def display_matches(match_data):
     return content
 
 
+def generate_markdown(match_data):
+    """生成 Markdown 格式内容"""
+    date_str = datetime.now(CHINA_TZ).date()
+    md = f"## 🏆 今日赛程（{date_str}）\n\n"
+    region_flags = {
+        "LCK": "🇰🇷",
+        "LPL": "🇨🇳"
+    }
+    for region, games in match_data.items():
+        flag = region_flags.get(region, "")
+        md += f"### {flag} **{region} 赛区**\n"
+        md += "| 时间（北京时间） | 对阵           |\n"
+        md += "|------------------|----------------|\n"
+        for name, b_time in games:
+            time = datetime.strptime(b_time, "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
+            md += f"| {time}            | {name}      |\n"
+        md += "\n---\n\n"
+    md += "> ✅ 所有时间均为北京时间（UTC+8）\n"
+    return md
+
+
 def send_message(content):
     """发送消息"""
-    # 定义要发送的JSON数据
-    data = {
-        "appToken": Token,
-        "content": content,
-        "summary": "LOL赛事信息",
-        "contentType": 1,
-        "uids": [
-            UID
-        ],
-        "url": "http://wxpusher.zjiecode.com"
-    }
-    # 将数据转换为JSON格式
-    headers = {
-        'Content-Type': 'application/json'
-    }
     try:
-        # 发送POST请求
-        response = requests.post('https://wxpusher.zjiecode.com/api/send/message', headers=headers,
-                                 data=json.dumps(data))
-
+        # 发送请求
+        response = sc_send(SendKey, "LOL赛事信息", content)
         # 检查响应状态码
-        if response.status_code == 200:
-            print("消息发送成功:", response.json())
+        if response['code'] == 0:
+            print("消息发送成功:", response)
         else:
-            print("消息发送失败:", response.status_code, response.text)
+            print("消息发送失败:", response.get('error'))
     except requests.exceptions.RequestException as e:
         print("请求异常:", e)
 
@@ -124,8 +128,8 @@ def main():
     matches = fetch_upcoming_matches()
     today_matches = filter_today_matches(matches)
     if today_matches:
-        content = display_matches(today_matches)
-        send_message(content)
+        markdown_output = generate_markdown(today_matches)
+        send_message(markdown_output)
 
 
 if __name__ == "__main__":
