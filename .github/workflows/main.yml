@@ -1,0 +1,23 @@
+name: LOL Message Push
+
+on:
+  schedule:
+    - cron: '30 23 * * *'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r required.txt
+      - name: Run Python script
+        env:
+          SEND_KEY: ${{ secrets.SEND_KEY }}
+        run: python message_push.py
